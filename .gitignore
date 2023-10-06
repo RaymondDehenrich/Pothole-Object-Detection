@@ -1,1 +1,9 @@
 Dataset/
+output/
+__pycache__/
+other/
+temp/
+input/
+fasterrcnn/
+ssdlite/
+test.ipynb
