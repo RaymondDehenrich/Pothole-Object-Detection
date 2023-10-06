@@ -1,5 +1,5 @@
 # Pothole-Object-Detection
-Pothole object detection using SSDLite in PyTorch
+Pothole object detection using SSDLite in PyTorch<br>
 Dataset: https://www.kaggle.com/datasets/andrewmvd/pothole-detection
 
 # How to setup
