@@ -18,3 +18,8 @@ Note: Annotations files need to have the same filename as the image with only a 
 0. Look at how to setup
 1. Input image at './input'
 2. Run main.py with environment(optional).
+
+# How to start live object detection
+0. Look at how to setup
+1. run camera.py<br>
+Note: reinstall opencv-python if there is an error because of cv2.imshow is not installed. this happen because installation of opencv-headless from albumentations package
