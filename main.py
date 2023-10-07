@@ -57,9 +57,18 @@ if __name__ == "__main__":
                 outputs = model(image_input)
         image = image.replace('.png', '')
         outputs = [{k: v.detach().cpu() for k, v in t.items()} for t in outputs]
-        if len(outputs[0]['boxes']) !=0:
-            Kept_indices = torchvision.ops.nms(outputs[0]['boxes'],outputs[0]['scores'],iou_threshold=BOX_THRESHOLD)
-            outputs[0]['boxes'] = outputs[0]['boxes'][Kept_indices]
-            outputs[0]['scores'] = outputs[0]['scores'][Kept_indices]
-        visualize_image_with_boxes(image,img,outputs[0]['boxes'])
+        filtered_boxes = []
+        filtered_scores = []
+        if len(outputs[0]['boxes']) != 0:
+                for box, score in zip(outputs[0]['boxes'], outputs[0]['scores']):
+                    if (score >= 0.1) or model_used=='fasterrcnn':
+                        filtered_boxes.append(box)
+                        filtered_scores.append(score)
+                if len(filtered_boxes) != 0:
+                    outputs[0]['boxes'] = torch.stack(filtered_boxes)
+                    outputs[0]['scores'] = torch.tensor(filtered_scores)
+                    Kept_indices = torchvision.ops.nms(outputs[0]['boxes'],outputs[0]['scores'],iou_threshold=BOX_THRESHOLD)
+                    outputs[0]['boxes'] = outputs[0]['boxes'][Kept_indices]
+                    outputs[0]['scores'] = outputs[0]['scores'][Kept_indices]
+        visualize_image_with_boxes(image,img,outputs[0]['boxes']) 
     print("[Notice]Predicting complete!")
