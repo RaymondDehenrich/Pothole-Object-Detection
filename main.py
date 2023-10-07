@@ -51,7 +51,7 @@ if __name__ == "__main__":
         img = resize_and_pad_image(img,target_size=RESIZE_TARGET)
         img /=255.0
         img = np.transpose(img, (2, 0, 1))
-        image_input = torch.tensor(img, dtype=torch.float).cuda()
+        image_input = torch.tensor(img, dtype=torch.float).to(DEVICE)
         image_input = torch.unsqueeze(image_input, 0)
         with torch.no_grad():
                 outputs = model(image_input)
