@@ -27,4 +27,6 @@ OUTPUT_DIR = './output'
 CKP_PATH = "./checkpoint"
 
 #Change this to True if you want to print validation image in output
-VISUALIZE = False
+VISUALIZE = True
+
+INFERENCE_BEST_EPOCH = True

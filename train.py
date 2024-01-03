@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 
 from modules.dataset import CustomDataset
 from modules.utils import get_train_transform,collate_fn,SaveBestModel,visualize_image_with_boxes
-from modules.models import rcnn_model,ssdlite_model,load_ckp,save_ckp
+from modules.models import rcnn_model,ssdlite_model,load_ckp,save_ckp,mobilenet
 from config import (
    DEVICE,
    TRAIN_DIR,
@@ -68,7 +68,7 @@ def validate(valloader,model,model_used,visualize=False):
                 target_box=[]
                 target_label=[]
                 for box, score,label,tar_box,tar_label in zip(output['boxes'], output['scores'],output['labels'],target['boxes'],target['labels']):
-                    if (score >= 0.1) or model_used=='fasterrcnn':
+                    if (score >= 0.1) or model_used=='rcnn_modelv1':#TODO: Changed Here
                         filtered_boxes.append(box)
                         filtered_scores.append(score)
                         filtered_labels.append(label)
@@ -87,7 +87,7 @@ def validate(valloader,model,model_used,visualize=False):
                     target['boxes'] = target['boxes'][Kept_indices]
                     target['labels']=target['labels'][Kept_indices]
                     if visualize:
-                        visualize_image_with_boxes(count,images[img_count],output['boxes']) 
+                        visualize_image_with_boxes(count,images[img_count],output['boxes'],output['scores']) 
                         img_count+=1
                         count+=1
         for i in range(len(images)):
@@ -114,22 +114,23 @@ if __name__ == "__main__":
     valloader = DataLoader(val_dataset,batch_size=BATCH_SIZE,num_workers=NUM_WORKERS,collate_fn=collate_fn,drop_last=False)
     print(f"Training Samples  : {len(train_dataset)}")
     print(f"Validation Samples: {len(val_dataset)}")
-    print("Select model to use:")
-    print("1. FasterRCNN")
-    print("2. SSDLite")
+    print("Select model to train:")
+    print("1. FasterRCNN (ResNet50)")
+    print("2. FasterRCNN (Mobilenet)")
+    print("3. SSDLite")
     answer = input(">>")
-    model_used = ""
     if int(answer) == 1:
         model = rcnn_model()
-        params = [p for p in model.parameters() if p.requires_grad]
-        model_used = 'fasterrcnn'
-        optimizer = torch.optim.Adam(params, lr=0.001)
+        model_used = 'rcnn_model'
+    elif int(answer)==2:
+        model = mobilenet()
+        model_used = 'mobilenet'
     else:
         model = ssdlite_model()
-        model_used = 'ssdlite'
-        params = [p for p in model.parameters() if p.requires_grad]
-        optimizer = torch.optim.SGD(params, lr=0.001, momentum=0.9, nesterov=True)
-    
+        model_used ='ssdlite'
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
+
     model.to(DEVICE)
     scheduler = MultiStepLR(
             optimizer=optimizer, milestones=[100], gamma=0.1, verbose=True
@@ -142,21 +143,21 @@ if __name__ == "__main__":
         print(f"[Notice] Creating new checkpoint for {model_used}")
 
     best_model = SaveBestModel()
-    model_save_rate = 3
-    for epoch in range(start_epoch,NUM_EPOCHS):
-        print(f"EPOCH [{epoch+1}] of [{NUM_EPOCHS}]")
+    model_save_rate = 1
+    validate_summary = validate(valloader, model,model_used,visualize=VISUALIZE)
+    best_model.best_f1=validate_summary
+    for epoch in range(start_epoch+1,NUM_EPOCHS+1):
+        print(f"EPOCH [{epoch}] of [{NUM_EPOCHS}]")
         train_loss = train(trainloader,model)
-
-        
-        if(epoch%3==0):
+        if(epoch%1==0):
             #visualize=True will print the validate image in output folder
             metric_summary = validate(valloader, model,model_used,visualize=VISUALIZE)   
-            print(f"Epoch #{epoch+1} mAP@0.50:0.95: {metric_summary['map']}")
-            print(f"Epoch #{epoch+1} mAP@0.50: {metric_summary['map_50']}")
-            best_model(model, float(metric_summary['map']),optimizer, epoch+1,model_used)
+            print(f"Epoch #{epoch} mAP@0.50:0.95: {metric_summary['map']}")
+            print(f"Epoch #{epoch} mAP@0.50: {metric_summary['map_50']}")
+            best_model(model, float(metric_summary['map']),optimizer, epoch,model_used)
         if(epoch%model_save_rate==0):
-            if epoch % 10 ==0:
-                save_ckp(model,optimizer,epoch,checkpoint_dir=model_used,latest=False)
             save_ckp(model,optimizer,epoch,checkpoint_dir=model_used,latest=True)
+            if epoch % (model_save_rate*10) ==0:
+                save_ckp(model,optimizer,epoch,checkpoint_dir=model_used,latest=False)
         scheduler.step()
     print('Finished Training')

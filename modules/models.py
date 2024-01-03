@@ -8,9 +8,21 @@ from config import (
     NUM_CLASSES,
     CKP_PATH
 )
+#Faster R-CNN with mobilenet backbone
+class mobilenet(nn.Module):
+    def __init__(self):
+        super(mobilenet, self).__init__()
+        self.base_model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(weights='COCO_V1')
+        in_features = self.base_model.roi_heads.box_predictor.cls_score.in_features
+        self.base_model.roi_heads.box_predictor = FastRCNNPredictor(in_features, NUM_CLASSES)
 
-#fasterrcnn_resnet50_fpn_v2 Model
-#Heavyweight but more accurate model
+    def forward(self, image,target=None):
+        if target is not None:
+            return self.base_model(image, target)
+        else:
+            return self.base_model(image)
+
+#Faster R-CNN with resnet50 backbone
 class rcnn_model(nn.Module):
     def __init__(self):
         super(rcnn_model, self).__init__()
@@ -24,12 +36,11 @@ class rcnn_model(nn.Module):
         else:
             return self.base_model(image)
 
-#SSDLITE Model
-#Lightweight but less accurate model
+#SSDLite model with mobilenet backbone
 class ssdlite_model(nn.Module):
     def __init__(self):
         super(ssdlite_model, self).__init__()
-        self.base_model = ssdlite320_mobilenet_v3_large(num_classes=NUM_CLASSES)
+        self.base_model = ssdlite320_mobilenet_v3_large(num_classes=NUM_CLASSES,weights_backbone=torchvision.models.MobileNet_V3_Large_Weights.IMAGENET1K_V2)
    
     def forward(self, image,target=None):
         if target is not None:
